@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>部门管理</title>
+<script type="text/javascript">
+	var xmlHttpRequest ; // 这个是Ajax的核心处理对象，所有的异步处理操作都通过此对象完成
+	function create() {	// 定义一个函数，此函数负责创建XMLHttpRequst对象实例
+		if (window.XMLHttpRequest) { 	// 当前浏览器使用的不是IE
+			xmlHttpRequest = new XMLHttpRequest() ; // 直接实例化对象 
+		} else {	// 使用的是IE浏览器
+			xmlHttpRequest = new ActiveXObject("Microsoft.XMLHttp") ;
+		}
+	} 
+	window.onload = function() {  
+		loadDept() ; 
+		  
+		edit() ;
+	 	add() ;
+
+ 		
+	}
+	//监听增加按钮事件 
+	function add(){
+ 		document.getElementById("addDept").addEventListener("click",function(){
+ 			dnameValue = document.getElementById("dname").value  ;	//取得要增加的dname
+  			if(dnameValue !="") {	
+ 				create() ;  //创建 XMLHttpRequest对象 
+			 	xmlHttpRequest.open("post","DeptServlet/add?dname="+dnameValue) ;	//向服务器端发送请求 ,调用add方法 
+				// 进行请求的发送处理
+				xmlHttpRequest.send(null) ;	// 此时参数通过地址重写传递了
+ 			 	xmlHttpRequest.onreadystatechange = function(){		//定义信息返回的回调处理函数
+					//表示处理完成 
+ 			 		if (xmlHttpRequest.readyState == 4 && xmlHttpRequest.status == 200) {
+			 			//输出从服务器端返回的普通文本信息
+			 			//此时是添加操作，返回的deptno是0表示添加失败，不为0表示成功 
+ 			 			console.log(xmlHttpRequest.responseText) ;
+ 			 			//返回的部门编号不是0表示追加成功，向addRow中添加 
+						if(xmlHttpRequest.responseText != "0"){
+							addRow(xmlHttpRequest.responseText,dnameValue) ;
+							//进行清空操作 
+							document.getElementById("dname").value="" ;
+						}else{
+							document.getE·lementById("dname").value="" ;
+							alert("添加失败 ") ;
+						}
+	
+			 		}
+			 	}
+			}
+			
+		},false) ;
+	}
+	//此方法是对隐藏域中的修改按钮(editDept)进行监听 
+	function edit(){
+		//对隐藏域中编辑按钮进行监听 	
+		document.getElementById("editDept").addEventListener("click",function(){
+			//因为对修改框进行了修改，获得的是新数据，但是deptno是不变的，如果没有进行修改，则或取得依然是原始 的数据 
+			deptnoNewValue = document.getElementById("editdeptno").value ; 	//取得修改后的部门编号值 （此时是原始值，因为deptno不可修改 ）
+	 		dnameNewValue = document.getElementById("editdname").value ;	//取得修改后的部门名称值 
+			create() ;  //创建 XMLHttpRequest对象 		(Ajax的核心对象 )
+			//向服务器端发送请求，此时调用的是edit方法 ,进行地址重写-传递deptno和dname参数 。
+			xmlHttpRequest.open("post","DeptServlet/edit?deptno=" + deptnoNewValue +"&dname="+dnameNewValue) ;	
+			// 进行请求的发送处理
+			xmlHttpRequest.send(null) ;	// 此时参数通过地址重写传递了
+	 		xmlHttpRequest.onreadystatechange = function(){		//定义信息返回的回调处理函数
+				//表示处理完成 
+	  			if (xmlHttpRequest.readyState == 4 && xmlHttpRequest.status == 200) {
+	  				//接收从服务器端发送的普通文本信息
+	 						//此时此步骤并没有使用 ：--> eval函数将其解析为 JSON对象，必须采用 “（json）”
+	 						//此时此步骤并没有使用： --> deptObj此时就是JSON对象   
+	 				console.log(xmlHttpRequest.responseText.trim()) ;
+ 	  				//修改完成后重新将隐藏域进行隐藏 
+	  				document.getElementById("deptEditDiv").style.display = "none";
+	  				if(xmlHttpRequest.responseText.trim() == "true")//判断服务器端返回的修改结果是否为true
+ 	  					//获取 表单上更新为修改后的内容 ，然后填充到原始数据上，实现无刷新操作 
+ 	  					//修改框中的deptno 和表单上的deptno是同一个，只是数据换了一下而已 		
+ 	  					//dnameNewValue表示新的内容 
+	  					document.getElementById("dname-" + deptnoNewValue).innerHTML = dnameNewValue ;
+	  				}
+	 			}
+			
+		},false) ;
+			
+	}
+	function doRemove(deptno){					//删除操作 
+ 		if (window.confirm("确定要删除吗？")) { 
+			create() ;  	//创建 XMLHttpRequest对象 
+			//向服务器端发送请求,调用delete方法 
+	 		xmlHttpRequest.open("post","DeptServlet/delete?deptno="+deptno) ;	
+			// 进行请求的发送处理
+			xmlHttpRequest.send(null) ;	// 此时参数通过地址重写传递了
+ 			xmlHttpRequest.onreadystatechange = function(){	 		//定义信息返回的回调处理函数
+				//表示处理完成 
+ 	 			if (xmlHttpRequest.readyState == 4 && xmlHttpRequest.status == 200) {
+ 	 				//输出删除的状态 
+					console.log(xmlHttpRequest.responseText.trim()) ;
+	 				if(xmlHttpRequest.responseText.trim() == "true"){
+	 					//取得要删除的行对象 
+	 					deleteTrElement = document.getElementById("dept-" + deptno) ;
+	 					//由父节点删除自己 
+	 					deleteTrElement.parentNode.removeChild(deleteTrElement) ; 
+	 				}else{
+	 					alert("删除失败 ") ;
+	 				}
+	 				
+	 				
+	 			}
+	 		}	
+		}
+	}
+	function loadDept() {		//读取所有的Dept信息  
+		create() ;			//创建XMLHttpRequest对象 
+		//定义要处理的程序路径，向areaplus路径 传输，并传入参数 
+		xmlHttpRequest.open("post","DeptServlet/list") ; 	//向服务器端发送请求，调用list方法
+		xmlHttpRequest.send(null) ; 		//此时参数通过地址重写 传递了 
+		xmlHttpRequest.onreadystatechange = function() { 	//定义信息返回的回调处理函数 
+ 			//请求处理完成  
+ 			if (xmlHttpRequest.readyState == 4 && xmlHttpRequest.status == 200) { 
+ 				//接收从服务器端发送的普通文本信息
+ 				//使用 eval函数将其解析为 JSON对象，必须采用 “（json）”
+ 				//deptObj此时就是JSON对象   
+  				deptObj = eval("("+xmlHttpRequest.responseText+")") ; 
+ 				//根据JSON.put(key,value)    key->value找到值 ;
+ 				for (x = 0 ; x < deptObj.alldepts.length ; x ++) { 	//取得  
+ 					addRow(deptObj.alldepts[x].deptno,deptObj.alldepts[x].dname) ; 			
+ 				}	
+ 			}
+ 		}
+	}
+	//进行添加行的操作 (即回填处理 )
+	function addRow(deptno,dname){ 
+ 		//创建table标签 
+		deptElement = document.getElementById("deptTable") ;	//得到table对象
+		//创建tr标签 
+		deptTrElement = document.createElement("tr") ;			//创建新的tr标签 
+		deptTrElement.setAttribute("id","dept-"+deptno) ;
+		//创建三个td标签 
+		deptnoTdElement = document.createElement("td") ;		//创建部门编号td
+		deptnoTdElement.setAttribute("id","deptno-"+deptno) ;
+		dnameTdElement = document.createElement("td") ;			//创建部门名称td 
+		dnameTdElement.setAttribute("id","dname-"+deptno) ;
+		handleTdElement = document.createElement("td") ;		//创建操作框的td
+		//在操作框中 创建删除编辑按钮 
+ 		editButtonElement = document.createElement("button") ;	//创建编辑按钮 
+ 		editButtonElement.setAttribute("id" ,"deptEdit-" + deptno) ;	//设置按钮id 	
+		editButtonElement.appendChild(document.createTextNode("编辑 ")) ;	 //设置编辑按钮的内容 
+		
+		//******* 此监听的作用就是将隐藏层的内容显示出来 ************* 
+		//对编辑按钮进行监听处理,将隐藏的编辑层进行显示处理  <div id="deptEditDiv" style="display:none;">	  
+		editButtonElement.addEventListener("click",function(){
+			//以下两行是取得当前 行的部门编号和部门名称，以便将隐藏层的内容进行回填 		
+			//获取自定义创建的节点.使用 firstChild.nodeValue 
+ 			editDeptnoVal = document.getElementById("deptno-" + deptno).firstChild.nodeValue;	
+			editDnameVal = document.getElementById("dname-" + deptno).firstChild.nodeValue ; 
+ 			//进行隐藏层的回填处理 
+  			document.getElementById("editdeptno").value=editDeptnoVal ;  
+			document.getElementById("editdname").value=editDnameVal ;
+  			document.getElementById("deptEditDiv").style.display="block" ;			//让隐藏层进行显示 					
+		},false) ;
+		
+		
+		//创建删除按钮 
+		deleteButtonElement = document.createElement("button");	//创建删除按钮 
+		deleteButtonElement.setAttribute("id","deptDelete-" + deptno) ;//设置删除按钮id 
+		deleteButtonElement.appendChild(document.createTextNode("删除")) ;
+		
+		//对删除按钮进行监听操作 
+		deleteButtonElement.addEventListener("click",function(){
+			doRemove(deptno) ;				//删除当前行中的deptno对应的dept 
+		},false) ;
+		
+		
+		//将删除按钮  和  编辑按钮添加到操作td中 
+		handleTdElement.appendChild(editButtonElement) ;
+		handleTdElement.appendChild(deleteButtonElement) ;
+		//增加td中的内容 
+		deptnoTdElement.appendChild(document.createTextNode(deptno)) ; 
+		dnameTdElement.appendChild(document.createTextNode(dname)) ;
+		//将所有的td添加到tr中 
+		deptTrElement.appendChild(deptnoTdElement) ;
+		deptTrElement.appendChild(dnameTdElement) ;
+		deptTrElement.appendChild(handleTdElement) ;
+		//将tr添加到table中 
+		deptElement.appendChild(deptTrElement) ;
+		
+	}
+
+</script>
+</head>
+<body>
+	 
+<div id="deptDiv">
+	<table border="1" id="deptTable">
+		<tr><td>部门编号</td><td>部门名称</td><td colspan="2">操作</td></tr>
+	</table>
+</div>
+ <div id="deptEditDiv" style="display:none;"> 		<!-- 此层被隐藏了 --> 
+	 <input type="text" name="editdname" id="editdname" value=""> 
+		<input type="hidden" name="editdeptno" id="editdeptno" value=""> <!-- 隐藏部门编号表示部门编号不可以修改 -->
+	 	<input type="button" value="修改" id="editDept"> 
+ </div> 
+ <div id="deptForm" >
+ 	部门名称：<input type="text" id="dname" name="dname" value="">	 
+ 	<input type="button" id="addDept" value="增加">
+ 
+ </div>
+</body>
+</html>
